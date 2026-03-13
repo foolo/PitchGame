@@ -123,13 +123,6 @@ void Renderer::render() {
         float lerpFactor = 10.0f * dt;
         if (lerpFactor > 1.0f) lerpFactor = 1.0f;
         ballPos_.y = ballPos_.y + (gTargetY - ballPos_.y) * lerpFactor;
-
-        // Horizontal movement
-        ballPos_.x += ballVel_.x * dt;
-    } else {
-        // Update ball position with bouncing logic
-        ballPos_.x += ballVel_.x * dt;
-        ballPos_.y += ballVel_.y * dt;
     }
 
     // Bounce off walls
@@ -137,21 +130,11 @@ void Renderer::render() {
     float maxX = kProjectionHalfHeight * aspect;
     float maxY = kProjectionHalfHeight;
 
-    if (ballPos_.x + ballRadius_ > maxX) {
-        ballPos_.x = maxX - ballRadius_;
-        ballVel_.x *= -1.0f;
-    } else if (ballPos_.x - ballRadius_ < -maxX) {
-        ballPos_.x = -maxX + ballRadius_;
-        ballVel_.x *= -1.0f;
-    }
-
     if (!gHasTargetY) {
         if (ballPos_.y + ballRadius_ > maxY) {
             ballPos_.y = maxY - ballRadius_;
-            ballVel_.y *= -1.0f;
         } else if (ballPos_.y - ballRadius_ < -maxY) {
             ballPos_.y = -maxY + ballRadius_;
-            ballVel_.y *= -1.0f;
         }
     } else {
         // Clamp Y to screen boundaries even in pitch-controlled mode

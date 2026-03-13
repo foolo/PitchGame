@@ -25,7 +25,6 @@ public:
             height_(0),
             shaderNeedsNewProjectionMatrix_(true),
             ballPos_({0.0f, 0.0f}),
-            ballVel_({1.5f, 2.0f}),
             ballRadius_(0.2f),
             lastTimeNs_(0),
             updateDebugInfoMethodId_(nullptr) {
@@ -78,7 +77,6 @@ private:
     std::vector<Model> models_;
 
     Vector2 ballPos_;
-    Vector2 ballVel_;
     float ballRadius_;
     uint64_t lastTimeNs_;
 
