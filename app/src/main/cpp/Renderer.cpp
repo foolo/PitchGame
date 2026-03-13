@@ -139,6 +139,15 @@ void Renderer::render() {
         ballVel_.y *= -1.0f;
     }
 
+    // Update UI Debug Info via JNI
+    if (updateDebugInfoMethodId_ != nullptr) {
+        JNIEnv *env;
+        app_->activity->vm->AttachCurrentThread(&env, nullptr);
+        env->CallVoidMethod(app_->activity->javaGameActivity, updateDebugInfoMethodId_, ballPos_.x, ballPos_.y);
+        // In a real app, you might want to detach if you're creating new threads,
+        // but for the main loop it's often kept attached.
+    }
+
     glClear(GL_COLOR_BUFFER_BIT);
 
     if (!models_.empty()) {
@@ -180,10 +189,15 @@ void Renderer::initRenderer() {
             [&display](const EGLConfig &config) {
                 EGLint red, green, blue, depth;
                 if (eglGetConfigAttrib(display, config, EGL_RED_SIZE, &red)
-                    && eglGetConfigAttrib(display, config, EGL_GREEN_SIZE, &green)
-                    && eglGetConfigAttrib(display, config, EGL_BLUE_SIZE, &blue)
-                    && eglGetConfigAttrib(display, config, EGL_DEPTH_SIZE, &depth)) {
-                    return red == 8 && green == 8 && blue == 8 && depth == 24;
+                    && eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &red)) {
+                    // This check was a bit weird in the original, just making sure we have a config
+                }
+                EGLint r, g, b, d;
+                if (eglGetConfigAttrib(display, config, EGL_RED_SIZE, &r)
+                    && eglGetConfigAttrib(display, config, EGL_GREEN_SIZE, &g)
+                    && eglGetConfigAttrib(display, config, EGL_BLUE_SIZE, &b)
+                    && eglGetConfigAttrib(display, config, EGL_DEPTH_SIZE, &d)) {
+                    return r == 8 && g == 8 && b == 8 && d == 24;
                 }
                 return false;
             });
@@ -215,6 +229,12 @@ void Renderer::initRenderer() {
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Initialize JNI method ID
+    JNIEnv *env;
+    app_->activity->vm->AttachCurrentThread(&env, nullptr);
+    jclass clazz = env->GetObjectClass(app_->activity->javaGameActivity);
+    updateDebugInfoMethodId_ = env->GetMethodID(clazz, "updateDebugInfo", "(FF)V");
 
     createModels();
 }

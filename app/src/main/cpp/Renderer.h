@@ -4,6 +4,7 @@
 #include <EGL/egl.h>
 #include <memory>
 #include <vector>
+#include <jni.h>
 
 #include "Model.h"
 #include "Shader.h"
@@ -26,7 +27,8 @@ public:
             ballPos_({0.0f, 0.0f}),
             ballVel_({1.5f, 2.0f}),
             ballRadius_(0.2f),
-            lastTimeNs_(0) {
+            lastTimeNs_(0),
+            updateDebugInfoMethodId_(nullptr) {
         initRenderer();
     }
 
@@ -79,6 +81,8 @@ private:
     Vector2 ballVel_;
     float ballRadius_;
     uint64_t lastTimeNs_;
+
+    jmethodID updateDebugInfoMethodId_;
 };
 
 #endif //ANDROIDGLINVESTIGATIONS_RENDERER_H
