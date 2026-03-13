@@ -29,10 +29,11 @@ out vec2 fragUV;
 
 uniform mat4 uProjection;
 uniform vec2 uOffset;
+uniform float uScale;
 
 void main() {
     fragUV = inUV;
-    gl_Position = uProjection * vec4(inPosition.x + uOffset.x, inPosition.y + uOffset.y, inPosition.z, 1.0);
+    gl_Position = uProjection * vec4(inPosition.x * uScale + uOffset.x, inPosition.y * uScale + uOffset.y, inPosition.z, 1.0);
 }
 )vertex";
 
@@ -146,16 +147,35 @@ void Renderer::render() {
     if (!models_.empty()) {
         shader_->activate();
         GLint colorLoc = glGetUniformLocation(shader_->getProgram(), "uColor");
+        GLint scaleLoc = glGetUniformLocation(shader_->getProgram(), "uScale");
 
-        // Draw static objects
+        // 1. Farthest Layer: Clouds (Parallax factor 0.2)
+        glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 0.5f); // White, semi-transparent
+        glUniform1f(scaleLoc, 3.0f); // Big circles
+        for (const auto &objPos: cloudObjects_) {
+            shader_->setOffset(objPos.x - cameraPos_.x * 0.2f, objPos.y);
+            shader_->drawModel(models_[0]);
+        }
+
+        // 2. Mid Layer: Trees (Parallax factor 0.5)
+        glUniform4f(colorLoc, 0.1f, 0.6f, 0.1f, 1.0f); // Green
+        glUniform1f(scaleLoc, 1.5f);
+        for (const auto &objPos: treeObjects_) {
+            shader_->setOffset(objPos.x - cameraPos_.x * 0.5f, objPos.y - 0.5f);
+            shader_->drawModel(models_[0]);
+        }
+
+        // 3. Static objects (Parallax factor 1.0 - same as player)
         glUniform4f(colorLoc, 0.7f, 0.7f, 0.7f, 1.0f); // Grey
+        glUniform1f(scaleLoc, 1.0f);
         for (const auto &objPos: staticObjects_) {
             shader_->setOffset(objPos.x - cameraPos_.x, objPos.y - cameraPos_.y);
             shader_->drawModel(models_[0]);
         }
 
-        // Draw player
+        // 4. Player
         glUniform4f(colorLoc, 1.0f, 1.0f, 0.0f, 1.0f); // Yellow
+        glUniform1f(scaleLoc, 1.0f);
         shader_->setOffset(playerPos_.x - cameraPos_.x, playerPos_.y - cameraPos_.y);
         shader_->drawModel(models_[0]);
     }
@@ -266,10 +286,24 @@ void Renderer::createModels() {
 
     models_.emplace_back(vertices, indices, nullptr);
 
-    // Initialize static objects with random positions
+    // Initialize cloud objects (parallax layer 0.2)
+    for (int i = 0; i < 20; ++i) {
+        float rx = (float(rand()) / RAND_MAX) * 100.0f;
+        float ry = (float(rand()) / RAND_MAX) * 2.0f + 0.5f; // Mostly in the upper half
+        cloudObjects_.push_back({rx, ry});
+    }
+
+    // Initialize tree objects (parallax layer 0.5)
+    for (int i = 0; i < 40; ++i) {
+        float rx = (float(rand()) / RAND_MAX) * 150.0f;
+        float ry = (float(rand()) / RAND_MAX) * 0.5f - 1.5f; // Lower half
+        treeObjects_.push_back({rx, ry});
+    }
+
+    // Initialize static objects (same layer as player)
     for (int i = 0; i < 100; ++i) {
-        float rx = (float(rand()) / RAND_MAX) * 200.0f; // Random X from 0 to 200
-        float ry = (float(rand()) / RAND_MAX) * 4.0f - 2.0f;  // Random Y from -2 to 2
+        float rx = (float(rand()) / RAND_MAX) * 200.0f;
+        float ry = (float(rand()) / RAND_MAX) * 4.0f - 2.0f;
         staticObjects_.push_back({rx, ry});
     }
 }

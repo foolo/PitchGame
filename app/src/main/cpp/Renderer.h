@@ -83,6 +83,8 @@ private:
     uint64_t lastTimeNs_;
 
     std::vector<Vector2> staticObjects_;
+    std::vector<Vector2> cloudObjects_;
+    std::vector<Vector2> treeObjects_;
 
     jmethodID updateDebugInfoMethodId_;
 };
