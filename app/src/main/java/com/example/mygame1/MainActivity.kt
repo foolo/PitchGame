@@ -127,7 +127,7 @@ class MainActivity : GameActivity() {
         runOnUiThread {
             lastRms = rms
             lastPitch = pitch
-            debugTextView.text = String.format("Ball Pos: (%.2f, %.2f)\nVU-meter: %.0f\nPitch: %.0fHz", x, y, lastRms, lastPitch)
+            debugTextView.text = String.format("Player Pos: (%.2f, %.2f)\nVU-meter: %.0f\nPitch: %.0fHz", x, y, lastRms, lastPitch)
         }
     }
 }

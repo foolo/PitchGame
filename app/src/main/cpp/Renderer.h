@@ -24,8 +24,8 @@ public:
             width_(0),
             height_(0),
             shaderNeedsNewProjectionMatrix_(true),
-            ballPos_({0.0f, 0.0f}),
-            ballRadius_(0.2f),
+            playerPos_({0.0f, 0.0f}),
+            playerRadius_(0.2f),
             lastTimeNs_(0),
             updateDebugInfoMethodId_(nullptr) {
         initRenderer();
@@ -76,8 +76,8 @@ private:
     std::unique_ptr<Shader> shader_;
     std::vector<Model> models_;
 
-    Vector2 ballPos_;
-    float ballRadius_;
+    Vector2 playerPos_;
+    float playerRadius_;
     uint64_t lastTimeNs_;
 
     jmethodID updateDebugInfoMethodId_;

@@ -113,7 +113,7 @@ void Renderer::render() {
         // Interpolate towards target Y for smoother movement
         float lerpFactor = 10.0f * dt;
         if (lerpFactor > 1.0f) lerpFactor = 1.0f;
-        ballPos_.y = ballPos_.y + (gTargetY - ballPos_.y) * lerpFactor;
+        playerPos_.y = playerPos_.y + (gTargetY - playerPos_.y) * lerpFactor;
     }
 
     // Bounce off walls
@@ -122,15 +122,15 @@ void Renderer::render() {
     float maxY = kProjectionHalfHeight;
 
     if (!gHasTargetY) {
-        if (ballPos_.y + ballRadius_ > maxY) {
-            ballPos_.y = maxY - ballRadius_;
-        } else if (ballPos_.y - ballRadius_ < -maxY) {
-            ballPos_.y = -maxY + ballRadius_;
+        if (playerPos_.y + playerRadius_ > maxY) {
+            playerPos_.y = maxY - playerRadius_;
+        } else if (playerPos_.y - playerRadius_ < -maxY) {
+            playerPos_.y = -maxY + playerRadius_;
         }
     } else {
         // Clamp Y to screen boundaries even in pitch-controlled mode
-        if (ballPos_.y + ballRadius_ > maxY) ballPos_.y = maxY - ballRadius_;
-        if (ballPos_.y - ballRadius_ < -maxY) ballPos_.y = -maxY + ballRadius_;
+        if (playerPos_.y + playerRadius_ > maxY) playerPos_.y = maxY - playerRadius_;
+        if (playerPos_.y - playerRadius_ < -maxY) playerPos_.y = -maxY + playerRadius_;
     }
 
     // Update UI Debug Info via JNI
@@ -138,14 +138,14 @@ void Renderer::render() {
         JNIEnv *env;
         app_->activity->vm->AttachCurrentThread(&env, nullptr);
         env->CallVoidMethod(app_->activity->javaGameActivity, updateDebugInfoMethodId_,
-                            ballPos_.x, ballPos_.y, gLastRms, gLastPitch);
+                            playerPos_.x, playerPos_.y, gLastRms, gLastPitch);
     }
 
     glClear(GL_COLOR_BUFFER_BIT);
 
     if (!models_.empty()) {
         shader_->activate();
-        shader_->setOffset(ballPos_.x, ballPos_.y);
+        shader_->setOffset(playerPos_.x, playerPos_.y);
 
         for (const auto &model: models_) {
             shader_->drawModel(model);
@@ -245,10 +245,10 @@ void Renderer::updateRenderArea() {
 void Renderer::createModels() {
     // Create a square that will be rendered as a circle by the fragment shader
     std::vector<Vertex> vertices = {
-            Vertex(Vector3{ballRadius_, ballRadius_, 0}, Vector2{1, 1}),
-            Vertex(Vector3{-ballRadius_, ballRadius_, 0}, Vector2{0, 1}),
-            Vertex(Vector3{-ballRadius_, -ballRadius_, 0}, Vector2{0, 0}),
-            Vertex(Vector3{ballRadius_, -ballRadius_, 0}, Vector2{1, 0})
+            Vertex(Vector3{playerRadius_, playerRadius_, 0}, Vector2{1, 1}),
+            Vertex(Vector3{-playerRadius_, playerRadius_, 0}, Vector2{0, 1}),
+            Vertex(Vector3{-playerRadius_, -playerRadius_, 0}, Vector2{0, 0}),
+            Vertex(Vector3{playerRadius_, -playerRadius_, 0}, Vector2{1, 0})
     };
     std::vector<Index> indices = {
             0, 1, 2, 0, 2, 3
