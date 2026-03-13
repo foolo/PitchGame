@@ -19,6 +19,10 @@
 static float gTargetY = 0.0f;
 static bool gHasTargetY = false;
 
+// Voice range constants
+static constexpr float kVoicePitchMin = 500.0f;
+static constexpr float kVoicePitchMax = 1000.0f;
+
 // Vertex shader
 static const char *vertex = R"vertex(#version 300 es
 in vec3 inPosition;
@@ -257,8 +261,8 @@ void Renderer::handleInput() {
 extern "C" JNIEXPORT void JNICALL
 Java_com_example_mygame1_MainActivity_updateVoicePitch(JNIEnv *env, jobject thiz, jfloat pitch) {
     if (pitch > 0) {
-        // Map 500-1000 Hz to -2.0 to 2.0 y-range
-        float normalized = (pitch - 500.0f) / 500.0f; // 0.0 to 1.0
+        // Map kVoicePitchMin-kVoicePitchMax Hz to -2.0 to 2.0 y-range
+        float normalized = (pitch - kVoicePitchMin) / (kVoicePitchMax - kVoicePitchMin);
         if (normalized < 0.0f) normalized = 0.0f;
         if (normalized > 1.0f) normalized = 1.0f;
 
