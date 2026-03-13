@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 #include <android/imagedecoder.h>
-#include <time.h>
+#include <ctime>
 
 #include "AndroidOut.h"
 #include "Shader.h"
@@ -111,7 +111,7 @@ void Renderer::render() {
     }
 
     // Calculate delta time
-    timespec now;
+    timespec now = {0, 0};
     clock_gettime(CLOCK_MONOTONIC, &now);
     uint64_t nowNs = (uint64_t)now.tv_sec * 1000000000ull + (uint64_t)now.tv_nsec;
     if (lastTimeNs_ == 0) lastTimeNs_ = nowNs;
