@@ -3,6 +3,7 @@
 
 #include <EGL/egl.h>
 #include <memory>
+#include <vector>
 
 #include "Model.h"
 #include "Shader.h"
@@ -21,7 +22,11 @@ public:
             context_(EGL_NO_CONTEXT),
             width_(0),
             height_(0),
-            shaderNeedsNewProjectionMatrix_(true) {
+            shaderNeedsNewProjectionMatrix_(true),
+            ballPos_({0.0f, 0.0f}),
+            ballVel_({1.5f, 2.0f}),
+            ballRadius_(0.2f),
+            lastTimeNs_(0) {
         initRenderer();
     }
 
@@ -69,6 +74,11 @@ private:
 
     std::unique_ptr<Shader> shader_;
     std::vector<Model> models_;
+
+    Vector2 ballPos_;
+    Vector2 ballVel_;
+    float ballRadius_;
+    uint64_t lastTimeNs_;
 };
 
 #endif //ANDROIDGLINVESTIGATIONS_RENDERER_H
