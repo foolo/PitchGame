@@ -25,6 +25,7 @@ public:
             height_(0),
             shaderNeedsNewProjectionMatrix_(true),
             playerPos_({0.0f, 0.0f}),
+            cameraPos_({0.0f, 0.0f}),
             playerRadius_(0.2f),
             lastTimeNs_(0),
             updateDebugInfoMethodId_(nullptr) {
@@ -77,8 +78,11 @@ private:
     std::vector<Model> models_;
 
     Vector2 playerPos_;
+    Vector2 cameraPos_;
     float playerRadius_;
     uint64_t lastTimeNs_;
+
+    std::vector<Vector2> staticObjects_;
 
     jmethodID updateDebugInfoMethodId_;
 };

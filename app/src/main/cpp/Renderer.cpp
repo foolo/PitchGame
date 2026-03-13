@@ -9,6 +9,7 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
+#include <cstdlib>
 
 #include "AndroidOut.h"
 #include "Shader.h"
@@ -43,12 +44,14 @@ in vec2 fragUV;
 
 out vec4 outColor;
 
+uniform vec4 uColor;
+
 void main() {
     float dist = distance(fragUV, vec2(0.5, 0.5));
     if (dist > 0.5) {
         discard;
     }
-    outColor = vec4(1.0, 1.0, 0.0, 1.0); // Yellow
+    outColor = uColor;
 }
 )fragment";
 
@@ -100,6 +103,13 @@ void Renderer::render() {
     float dt = (float)(nowNs - lastTimeNs_) * 1e-9f;
     lastTimeNs_ = nowNs;
 
+    // Move player to the right
+    float speedX = 2.0f;
+    playerPos_.x += speedX * dt;
+
+    // Camera follows player
+    cameraPos_.x = playerPos_.x;
+
     bool hasTargetY = Audio_hasTargetY();
     if (hasTargetY) {
         // Interpolate towards target Y for smoother movement
@@ -108,9 +118,7 @@ void Renderer::render() {
         playerPos_.y = playerPos_.y + (Audio_getTargetY() - playerPos_.y) * lerpFactor;
     }
 
-    // Bounce off walls
-    float aspect = float(width_) / height_;
-    float maxX = kProjectionHalfHeight * aspect;
+    // Bounce off walls (Y only now, X is infinite)
     float maxY = kProjectionHalfHeight;
 
     if (!hasTargetY) {
@@ -137,11 +145,19 @@ void Renderer::render() {
 
     if (!models_.empty()) {
         shader_->activate();
-        shader_->setOffset(playerPos_.x, playerPos_.y);
+        GLint colorLoc = glGetUniformLocation(shader_->getProgram(), "uColor");
 
-        for (const auto &model: models_) {
-            shader_->drawModel(model);
+        // Draw static objects
+        glUniform4f(colorLoc, 0.7f, 0.7f, 0.7f, 1.0f); // Grey
+        for (const auto &objPos: staticObjects_) {
+            shader_->setOffset(objPos.x - cameraPos_.x, objPos.y - cameraPos_.y);
+            shader_->drawModel(models_[0]);
         }
+
+        // Draw player
+        glUniform4f(colorLoc, 1.0f, 1.0f, 0.0f, 1.0f); // Yellow
+        shader_->setOffset(playerPos_.x - cameraPos_.x, playerPos_.y - cameraPos_.y);
+        shader_->drawModel(models_[0]);
     }
 
     auto swapResult = eglSwapBuffers(display_, surface_);
@@ -149,6 +165,8 @@ void Renderer::render() {
 }
 
 void Renderer::initRenderer() {
+    srand(time(nullptr));
+
     constexpr EGLint attribs[] = {
             EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
             EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -247,6 +265,13 @@ void Renderer::createModels() {
     };
 
     models_.emplace_back(vertices, indices, nullptr);
+
+    // Initialize static objects with random positions
+    for (int i = 0; i < 100; ++i) {
+        float rx = (float(rand()) / RAND_MAX) * 200.0f; // Random X from 0 to 200
+        float ry = (float(rand()) / RAND_MAX) * 4.0f - 2.0f;  // Random Y from -2 to 2
+        staticObjects_.push_back({rx, ry});
+    }
 }
 
 void Renderer::handleInput() {
