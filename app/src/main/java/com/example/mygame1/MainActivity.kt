@@ -30,6 +30,8 @@ class MainActivity : GameActivity() {
         }
     }
 
+    private external fun updateVoicePitch(pitch: Float)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         debugTextView = TextView(this).apply {
@@ -104,8 +106,10 @@ class MainActivity : GameActivity() {
                             }
                         }
                         lastPitch = (zeroCrossings.toFloat() * sampleRate / (2 * read))
+                        updateVoicePitch(lastPitch)
                     } else {
                         lastPitch = 0f
+                        updateVoicePitch(0f)
                     }
                 }
             }

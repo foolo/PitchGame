@@ -33,6 +33,10 @@ aout << std::endl;\
 //! Color for cornflower blue. Can be sent directly to glClearColor
 #define CORNFLOWER_BLUE 100 / 255.f, 149 / 255.f, 237 / 255.f, 1
 
+// Global state for voice control
+static float gTargetY = 0.0f;
+static bool gHasTargetY = false;
+
 // Vertex shader
 static const char *vertex = R"vertex(#version 300 es
 in vec3 inPosition;
@@ -114,9 +118,19 @@ void Renderer::render() {
     float dt = (float)(nowNs - lastTimeNs_) * 1e-9f;
     lastTimeNs_ = nowNs;
 
-    // Update ball position
-    ballPos_.x += ballVel_.x * dt;
-    ballPos_.y += ballVel_.y * dt;
+    if (gHasTargetY) {
+        // Interpolate towards target Y for smoother movement
+        float lerpFactor = 10.0f * dt;
+        if (lerpFactor > 1.0f) lerpFactor = 1.0f;
+        ballPos_.y = ballPos_.y + (gTargetY - ballPos_.y) * lerpFactor;
+
+        // Horizontal movement
+        ballPos_.x += ballVel_.x * dt;
+    } else {
+        // Update ball position with bouncing logic
+        ballPos_.x += ballVel_.x * dt;
+        ballPos_.y += ballVel_.y * dt;
+    }
 
     // Bounce off walls
     float aspect = float(width_) / height_;
@@ -131,12 +145,18 @@ void Renderer::render() {
         ballVel_.x *= -1.0f;
     }
 
-    if (ballPos_.y + ballRadius_ > maxY) {
-        ballPos_.y = maxY - ballRadius_;
-        ballVel_.y *= -1.0f;
-    } else if (ballPos_.y - ballRadius_ < -maxY) {
-        ballPos_.y = -maxY + ballRadius_;
-        ballVel_.y *= -1.0f;
+    if (!gHasTargetY) {
+        if (ballPos_.y + ballRadius_ > maxY) {
+            ballPos_.y = maxY - ballRadius_;
+            ballVel_.y *= -1.0f;
+        } else if (ballPos_.y - ballRadius_ < -maxY) {
+            ballPos_.y = -maxY + ballRadius_;
+            ballVel_.y *= -1.0f;
+        }
+    } else {
+        // Clamp Y to screen boundaries even in pitch-controlled mode
+        if (ballPos_.y + ballRadius_ > maxY) ballPos_.y = maxY - ballRadius_;
+        if (ballPos_.y - ballRadius_ < -maxY) ballPos_.y = -maxY + ballRadius_;
     }
 
     // Update UI Debug Info via JNI
@@ -144,8 +164,6 @@ void Renderer::render() {
         JNIEnv *env;
         app_->activity->vm->AttachCurrentThread(&env, nullptr);
         env->CallVoidMethod(app_->activity->javaGameActivity, updateDebugInfoMethodId_, ballPos_.x, ballPos_.y);
-        // In a real app, you might want to detach if you're creating new threads,
-        // but for the main loop it's often kept attached.
     }
 
     glClear(GL_COLOR_BUFFER_BIT);
@@ -161,6 +179,11 @@ void Renderer::render() {
 
     auto swapResult = eglSwapBuffers(display_, surface_);
     assert(swapResult == EGL_TRUE);
+}
+
+void Renderer::setTargetY(float y) {
+    targetY_ = y;
+    hasTargetY_ = true;
 }
 
 void Renderer::initRenderer() {
@@ -187,11 +210,6 @@ void Renderer::initRenderer() {
             supportedConfigs.get(),
             supportedConfigs.get() + numConfigs,
             [&display](const EGLConfig &config) {
-                EGLint red, green, blue, depth;
-                if (eglGetConfigAttrib(display, config, EGL_RED_SIZE, &red)
-                    && eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &red)) {
-                    // This check was a bit weird in the original, just making sure we have a config
-                }
                 EGLint r, g, b, d;
                 if (eglGetConfigAttrib(display, config, EGL_RED_SIZE, &r)
                     && eglGetConfigAttrib(display, config, EGL_GREEN_SIZE, &g)
@@ -274,4 +292,19 @@ void Renderer::handleInput() {
     if (!inputBuffer) return;
     android_app_clear_motion_events(inputBuffer);
     android_app_clear_key_events(inputBuffer);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_example_mygame1_MainActivity_updateVoicePitch(JNIEnv *env, jobject thiz, jfloat pitch) {
+    if (pitch > 0) {
+        // Map 500-1000 Hz to -2.0 to 2.0 y-range
+        float normalized = (pitch - 500.0f) / 500.0f; // 0.0 to 1.0
+        if (normalized < 0.0f) normalized = 0.0f;
+        if (normalized > 1.0f) normalized = 1.0f;
+
+        gTargetY = normalized * 4.0f - 2.0f;
+        gHasTargetY = true;
+    } else {
+        gHasTargetY = false;
+    }
 }
