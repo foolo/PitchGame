@@ -1,18 +1,29 @@
 package com.example.mygame1
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.annotation.Keep
+import androidx.core.app.ActivityCompat
 import com.google.androidgamesdk.GameActivity
+import kotlin.math.sqrt
 
 class MainActivity : GameActivity() {
     private lateinit var debugTextView: TextView
+    private var audioRecord: AudioRecord? = null
+    private var isRecording = false
+    private var lastVuLevel: Double = 0.0
 
     companion object {
+        private const val REQUEST_RECORD_AUDIO_PERMISSION = 200
         init {
             System.loadLibrary("mygame1")
         }
@@ -25,7 +36,7 @@ class MainActivity : GameActivity() {
             textSize = 18f
             setBackgroundColor(Color.argb(100, 0, 0, 0))
             setPadding(16, 16, 16, 16)
-            text = "Ball Pos: (0.00, 0.00)"
+            text = "Ball Pos: (0.00, 0.00)\nVU-meter: 0"
         }
         val params = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -35,6 +46,64 @@ class MainActivity : GameActivity() {
             setMargins(50, 50, 0, 0)
         }
         addContentView(debugTextView, params)
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_RECORD_AUDIO_PERMISSION)
+        } else {
+            startAudioCapture()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            startAudioCapture()
+        }
+    }
+
+    private fun startAudioCapture() {
+        val sampleRate = 44100
+        val channelConfig = AudioFormat.CHANNEL_IN_MONO
+        val audioFormat = AudioFormat.ENCODING_PCM_16BIT
+        val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+        
+        audioRecord = AudioRecord(
+            MediaRecorder.AudioSource.MIC,
+            sampleRate,
+            channelConfig,
+            audioFormat,
+            bufferSize
+        )
+
+        audioRecord?.startRecording()
+        isRecording = true
+
+        Thread {
+            val buffer = ShortArray(bufferSize)
+            while (isRecording) {
+                val read = audioRecord?.read(buffer, 0, bufferSize) ?: 0
+                if (read > 0) {
+                    var sum = 0.0
+                    for (i in 0 until read) {
+                        sum += buffer[i] * buffer[i]
+                    }
+                    val rms = sqrt(sum / read)
+                    lastVuLevel = rms
+                }
+            }
+        }.start()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        isRecording = false
+        audioRecord?.stop()
+        audioRecord?.release()
+        audioRecord = null
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -57,7 +126,7 @@ class MainActivity : GameActivity() {
     @Keep
     fun updateDebugInfo(x: Float, y: Float) {
         runOnUiThread {
-            debugTextView.text = String.format("Ball Pos: (%.2f, %.2f)", x, y)
+            debugTextView.text = String.format("Ball Pos: (%.2f, %.2f)\nVU-meter: %.0f", x, y, lastVuLevel)
         }
     }
 }
