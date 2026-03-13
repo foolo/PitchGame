@@ -14,19 +14,10 @@
 #include "Shader.h"
 #include "Utility.h"
 #include "TextureAsset.h"
+#include "Audio.h"
 
 //! Color for cornflower blue. Can be sent directly to glClearColor
 #define CORNFLOWER_BLUE 100 / 255.f, 149 / 255.f, 237 / 255.f, 1
-
-// Global state for voice control
-static float gTargetY = 0.0f;
-static bool gHasTargetY = false;
-static float gLastRms = 0.0f;
-static float gLastPitch = 0.0f;
-
-// Voice range constants
-static constexpr float kVoicePitchMin = 180.0f;
-static constexpr float kVoicePitchMax = 230.0f;
 
 // Vertex shader
 static const char *vertex = R"vertex(#version 300 es
@@ -109,11 +100,12 @@ void Renderer::render() {
     float dt = (float)(nowNs - lastTimeNs_) * 1e-9f;
     lastTimeNs_ = nowNs;
 
-    if (gHasTargetY) {
+    bool hasTargetY = Audio_hasTargetY();
+    if (hasTargetY) {
         // Interpolate towards target Y for smoother movement
         float lerpFactor = 10.0f * dt;
         if (lerpFactor > 1.0f) lerpFactor = 1.0f;
-        playerPos_.y = playerPos_.y + (gTargetY - playerPos_.y) * lerpFactor;
+        playerPos_.y = playerPos_.y + (Audio_getTargetY() - playerPos_.y) * lerpFactor;
     }
 
     // Bounce off walls
@@ -121,7 +113,7 @@ void Renderer::render() {
     float maxX = kProjectionHalfHeight * aspect;
     float maxY = kProjectionHalfHeight;
 
-    if (!gHasTargetY) {
+    if (!hasTargetY) {
         if (playerPos_.y + playerRadius_ > maxY) {
             playerPos_.y = maxY - playerRadius_;
         } else if (playerPos_.y - playerRadius_ < -maxY) {
@@ -138,7 +130,7 @@ void Renderer::render() {
         JNIEnv *env;
         app_->activity->vm->AttachCurrentThread(&env, nullptr);
         env->CallVoidMethod(app_->activity->javaGameActivity, updateDebugInfoMethodId_,
-                            playerPos_.x, playerPos_.y, gLastRms, gLastPitch);
+                            playerPos_.x, playerPos_.y, Audio_getLastRms(), Audio_getLastPitch());
     }
 
     glClear(GL_COLOR_BUFFER_BIT);
@@ -262,72 +254,4 @@ void Renderer::handleInput() {
     if (!inputBuffer) return;
     android_app_clear_motion_events(inputBuffer);
     android_app_clear_key_events(inputBuffer);
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_example_mygame1_MainActivity_analyzeAudio(JNIEnv *env, jobject thiz, jshortArray jbuffer, jint size) {
-    jshort *buffer = env->GetShortArrayElements(jbuffer, nullptr);
-
-    float kVoiceMid = std::sqrt(kVoicePitchMin * kVoicePitchMax);
-    float detectionPitchMax = kVoiceMid * std::sqrt(2.0f);
-    float detectionPitchMin = kVoiceMid / std::sqrt(2.0f);
-
-    // Calculate RMS
-    double sum_sq = 0;
-    for (int i = 0; i < size; ++i) {
-        sum_sq += (double)buffer[i] * buffer[i];
-    }
-    float rms = (float)std::sqrt(sum_sq / (double)size);
-    gLastRms = rms;
-
-    float pitch = 0.0f;
-    if (rms > 500.0f) {
-        // Autocorrelation-based pitch detection, restricted to kVoicePitchMin-kVoicePitchMax
-        int sampleRate = 44100;
-        int minPeriod = (int)((float)sampleRate / detectionPitchMax);
-        int maxPeriod = (int)((float)sampleRate / detectionPitchMin);
-
-        // Limit periods to buffer size
-        if (maxPeriod >= size) maxPeriod = size - 1;
-        if (minPeriod < 1) minPeriod = 1;
-
-        double maxCorr = -1.0;
-        int bestPeriod = -1;
-
-        if (minPeriod <= maxPeriod) {
-            for (int period = minPeriod; period <= maxPeriod; ++period) {
-                double corr = 0;
-                for (int i = 0; i < size - period; ++i) {
-                    corr += (double)buffer[i] * (double)buffer[i + period];
-                }
-                if (corr > maxCorr) {
-                    maxCorr = corr;
-                    bestPeriod = period;
-                }
-            }
-        }
-
-        if (bestPeriod != -1) {
-            pitch = (float)sampleRate / (float)bestPeriod;
-
-            // Strictly enforce range
-            if (pitch < kVoicePitchMin || pitch > kVoicePitchMax) {
-                pitch = 0.0f;
-            }
-        }
-    }
-
-    gLastPitch = pitch;
-
-    if (pitch > 0.0f) {
-        // Map kVoicePitchMin-kVoicePitchMax Hz to -2.0 to 2.0 y-range
-        float normalized = (pitch - kVoicePitchMin) / (kVoicePitchMax - kVoicePitchMin);
-        normalized = std::max(0.0f, std::min(1.0f, normalized));
-        gTargetY = normalized * 4.0f - 2.0f;
-        gHasTargetY = true;
-    } else {
-        gHasTargetY = false;
-    }
-
-    env->ReleaseShortArrayElements(jbuffer, buffer, JNI_ABORT);
 }
