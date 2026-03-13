@@ -30,7 +30,7 @@ Java_com_example_mygame1_MainActivity_analyzeAudio(JNIEnv *env, jobject thiz, js
     for (int i = 0; i < size; ++i) {
         sum_sq += (double)buffer[i] * buffer[i];
     }
-    float rms = (float)std::sqrt(sum_sq / (double)size);
+    auto rms = (float)std::sqrt(sum_sq / (double)size);
     gLastRms = rms;
 
     float pitch = 0.0f;
