@@ -181,11 +181,6 @@ void Renderer::render() {
     assert(swapResult == EGL_TRUE);
 }
 
-void Renderer::setTargetY(float y) {
-    targetY_ = y;
-    hasTargetY_ = true;
-}
-
 void Renderer::initRenderer() {
     constexpr EGLint attribs[] = {
             EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,

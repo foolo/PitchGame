@@ -28,9 +28,7 @@ public:
             ballVel_({1.5f, 2.0f}),
             ballRadius_(0.2f),
             lastTimeNs_(0),
-            updateDebugInfoMethodId_(nullptr),
-            targetY_(0.0f),
-            hasTargetY_(false) {
+            updateDebugInfoMethodId_(nullptr) {
         initRenderer();
     }
 
@@ -47,8 +45,6 @@ public:
      * Renders all the models in the renderer
      */
     void render();
-
-    void setTargetY(float y);
 
 private:
     /*!
@@ -87,9 +83,6 @@ private:
     uint64_t lastTimeNs_;
 
     jmethodID updateDebugInfoMethodId_;
-
-    float targetY_;
-    bool hasTargetY_;
 };
 
 #endif //ANDROIDGLINVESTIGATIONS_RENDERER_H
