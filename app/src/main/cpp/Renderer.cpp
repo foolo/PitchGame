@@ -12,24 +12,6 @@
 #include "Utility.h"
 #include "TextureAsset.h"
 
-//! executes glGetString and outputs the result to logcat
-#define PRINT_GL_STRING(s) {aout << #s": "<< glGetString(s) << std::endl;}
-
-/*!
- * @brief if glGetString returns a space separated list of elements, prints each one on a new line
- */
-#define PRINT_GL_STRING_AS_LIST(s) { \
-std::istringstream extensionStream((const char *) glGetString(s));\
-std::vector<std::string> extensionList(\
-        std::istream_iterator<std::string>{extensionStream},\
-        std::istream_iterator<std::string>());\
-aout << #s":\n";\
-for (auto& extension: extensionList) {\
-    aout << extension << "\n";\
-}\
-aout << std::endl;\
-}
-
 //! Color for cornflower blue. Can be sent directly to glClearColor
 #define CORNFLOWER_BLUE 100 / 255.f, 149 / 255.f, 237 / 255.f, 1
 
