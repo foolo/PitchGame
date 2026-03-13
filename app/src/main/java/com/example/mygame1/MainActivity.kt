@@ -40,7 +40,7 @@ class MainActivity : GameActivity() {
             textSize = 18f
             setBackgroundColor(Color.argb(100, 0, 0, 0))
             setPadding(16, 16, 16, 16)
-            text = "Ball Pos: (0.00, 0.00)\nVU-meter: 0\nPitch: 0Hz"
+            text = "..."
         }
         val params = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
