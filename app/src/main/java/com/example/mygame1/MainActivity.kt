@@ -21,6 +21,7 @@ class MainActivity : GameActivity() {
     private var audioRecord: AudioRecord? = null
     private var isRecording = false
     private var lastVuLevel: Double = 0.0
+    private var lastPitch: Float = 0f
 
     companion object {
         private const val REQUEST_RECORD_AUDIO_PERMISSION = 200
@@ -36,7 +37,7 @@ class MainActivity : GameActivity() {
             textSize = 18f
             setBackgroundColor(Color.argb(100, 0, 0, 0))
             setPadding(16, 16, 16, 16)
-            text = "Ball Pos: (0.00, 0.00)\nVU-meter: 0"
+            text = "Ball Pos: (0.00, 0.00)\nVU-meter: 0\nPitch: 0Hz"
         }
         val params = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -93,6 +94,19 @@ class MainActivity : GameActivity() {
                     }
                     val rms = sqrt(sum / read)
                     lastVuLevel = rms
+
+                    // Simple zero-crossing pitch detection (approximation)
+                    if (rms > 500) { // Only detect pitch if there's enough volume
+                        var zeroCrossings = 0
+                        for (i in 1 until read) {
+                            if ((buffer[i-1] >= 0 && buffer[i] < 0) || (buffer[i-1] < 0 && buffer[i] >= 0)) {
+                                zeroCrossings++
+                            }
+                        }
+                        lastPitch = (zeroCrossings.toFloat() * sampleRate / (2 * read))
+                    } else {
+                        lastPitch = 0f
+                    }
                 }
             }
         }.start()
@@ -126,7 +140,7 @@ class MainActivity : GameActivity() {
     @Keep
     fun updateDebugInfo(x: Float, y: Float) {
         runOnUiThread {
-            debugTextView.text = String.format("Ball Pos: (%.2f, %.2f)\nVU-meter: %.0f", x, y, lastVuLevel)
+            debugTextView.text = String.format("Ball Pos: (%.2f, %.2f)\nVU-meter: %.0f\nPitch: %.0fHz", x, y, lastVuLevel, lastPitch)
         }
     }
 }
