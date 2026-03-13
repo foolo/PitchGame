@@ -112,6 +112,7 @@ class MainActivity : GameActivity() {
         }
     }
 
+    @Suppress("DEPRECATION") // TODO: fix deprecation warnings
     private fun hideSystemUi() {
         val decorView = window.decorView
         decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
