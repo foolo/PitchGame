@@ -14,13 +14,14 @@ import android.widget.TextView
 import androidx.annotation.Keep
 import androidx.core.app.ActivityCompat
 import com.google.androidgamesdk.GameActivity
-import kotlin.math.sqrt
 
 class MainActivity : GameActivity() {
     private lateinit var debugTextView: TextView
     private var audioRecord: AudioRecord? = null
     private var isRecording = false
-    private var lastVuLevel: Double = 0.0
+    
+    // Values updated from C++
+    private var lastRms: Float = 0f
     private var lastPitch: Float = 0f
 
     companion object {
@@ -30,7 +31,7 @@ class MainActivity : GameActivity() {
         }
     }
 
-    private external fun updateVoicePitch(pitch: Float)
+    private external fun analyzeAudio(buffer: ShortArray, size: Int)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,27 +91,7 @@ class MainActivity : GameActivity() {
             while (isRecording) {
                 val read = audioRecord?.read(buffer, 0, bufferSize) ?: 0
                 if (read > 0) {
-                    var sum = 0.0
-                    for (i in 0 until read) {
-                        sum += buffer[i] * buffer[i]
-                    }
-                    val rms = sqrt(sum / read)
-                    lastVuLevel = rms
-
-                    // Simple zero-crossing pitch detection (approximation)
-                    if (rms > 500) { // Only detect pitch if there's enough volume
-                        var zeroCrossings = 0
-                        for (i in 1 until read) {
-                            if ((buffer[i-1] >= 0 && buffer[i] < 0) || (buffer[i-1] < 0 && buffer[i] >= 0)) {
-                                zeroCrossings++
-                            }
-                        }
-                        lastPitch = (zeroCrossings.toFloat() * sampleRate / (2 * read))
-                        updateVoicePitch(lastPitch)
-                    } else {
-                        lastPitch = 0f
-                        updateVoicePitch(0f)
-                    }
+                    analyzeAudio(buffer, read)
                 }
             }
         }.start()
@@ -142,9 +123,11 @@ class MainActivity : GameActivity() {
     }
 
     @Keep
-    fun updateDebugInfo(x: Float, y: Float) {
+    fun updateDebugInfo(x: Float, y: Float, rms: Float, pitch: Float) {
         runOnUiThread {
-            debugTextView.text = String.format("Ball Pos: (%.2f, %.2f)\nVU-meter: %.0f\nPitch: %.0fHz", x, y, lastVuLevel, lastPitch)
+            lastRms = rms
+            lastPitch = pitch
+            debugTextView.text = String.format("Ball Pos: (%.2f, %.2f)\nVU-meter: %.0f\nPitch: %.0fHz", x, y, lastRms, lastPitch)
         }
     }
 }
