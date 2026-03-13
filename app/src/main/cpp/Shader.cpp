@@ -37,7 +37,7 @@ Shader *Shader::loadShader(
             glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
 
             if (logLength) {
-                GLchar *log = new GLchar[logLength];
+                auto *log = new GLchar[logLength];
                 glGetProgramInfoLog(program, logLength, nullptr, log);
                 aout << "Failed to link program with:\n" << log << std::endl;
                 delete[] log;
