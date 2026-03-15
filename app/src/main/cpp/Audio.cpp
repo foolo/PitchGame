@@ -1,6 +1,7 @@
 #include "Audio.h"
 #include <cmath>
 #include <algorithm>
+#include "Constants.h"
 
 // Global state for voice control
 static float gTargetY = 0.0f;
@@ -73,10 +74,10 @@ Java_com_example_mygame1_MainActivity_analyzeAudio(JNIEnv *env, jobject thiz, js
     gLastPitch = pitch;
 
     if (pitch > 0.0f) {
-        // Map kVoicePitchMin-kVoicePitchMax Hz to -2.0 to 2.0 y-range
+        // Map kVoicePitchMin-kVoicePitchMax Hz to target y-range
         float normalized = (pitch - kVoicePitchMin) / (kVoicePitchMax - kVoicePitchMin);
         normalized = std::max(0.0f, std::min(1.0f, normalized));
-        gTargetY = normalized * 4.0f - 2.0f;
+        gTargetY = normalized * (2.0f * kProjectionHalfHeight) - kProjectionHalfHeight;
         gHasTargetY = true;
     } else {
         gHasTargetY = false;

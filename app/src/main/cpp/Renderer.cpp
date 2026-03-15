@@ -16,6 +16,7 @@
 #include "Utility.h"
 #include "TextureAsset.h"
 #include "Audio.h"
+#include "Constants.h"
 
 //! Color for cornflower blue. Can be sent directly to glClearColor
 #define CORNFLOWER_BLUE 100 / 255.f, 149 / 255.f, 237 / 255.f, 1
@@ -56,11 +57,6 @@ void main() {
 }
 )fragment";
 
-/*!
- * Half the height of the projection matrix. This gives you a renderable area of height 4 ranging
- * from -2 to 2
- */
-static constexpr float kProjectionHalfHeight = 2.f;
 static constexpr float kProjectionNearPlane = -1.f;
 static constexpr float kProjectionFarPlane = 1.f;
 
