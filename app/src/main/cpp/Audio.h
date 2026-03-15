@@ -7,8 +7,6 @@
 extern const float kVoicePitchMin;
 extern const float kVoicePitchMax;
 
-bool Audio_hasTargetY();
-float Audio_getTargetY();
 float Audio_getLastRms();
 float Audio_getLastPitch();
 

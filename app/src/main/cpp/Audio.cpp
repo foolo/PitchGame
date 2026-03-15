@@ -1,11 +1,8 @@
 #include "Audio.h"
 #include <cmath>
 #include <algorithm>
-#include "Constants.h"
 
 // Global state for voice control
-static float gTargetY = 0.0f;
-static bool gHasTargetY = false;
 static float gLastRms = 0.0f;
 static float gLastPitch = 0.0f;
 
@@ -13,8 +10,6 @@ static float gLastPitch = 0.0f;
 const float kVoicePitchMin = 180.0f;
 const float kVoicePitchMax = 230.0f;
 
-bool Audio_hasTargetY() { return gHasTargetY; }
-float Audio_getTargetY() { return gTargetY; }
 float Audio_getLastRms() { return gLastRms; }
 float Audio_getLastPitch() { return gLastPitch; }
 
@@ -72,16 +67,6 @@ Java_com_example_mygame1_MainActivity_analyzeAudio(JNIEnv *env, jobject thiz, js
     }
 
     gLastPitch = pitch;
-
-    if (pitch > 0.0f) {
-        // Map kVoicePitchMin-kVoicePitchMax Hz to target y-range
-        float normalized = (pitch - kVoicePitchMin) / (kVoicePitchMax - kVoicePitchMin);
-        normalized = std::max(0.0f, std::min(1.0f, normalized));
-        gTargetY = normalized * (2.0f * kProjectionHalfHeight) - kProjectionHalfHeight;
-        gHasTargetY = true;
-    } else {
-        gHasTargetY = false;
-    }
 
     env->ReleaseShortArrayElements(jbuffer, buffer, JNI_ABORT);
 }

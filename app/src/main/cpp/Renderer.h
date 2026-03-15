@@ -8,6 +8,7 @@
 
 #include "Model.h"
 #include "Shader.h"
+#include "Game.h"
 
 struct android_app;
 
@@ -24,10 +25,6 @@ public:
             width_(0),
             height_(0),
             shaderNeedsNewProjectionMatrix_(true),
-            playerPos_({0.0f, 0.0f}),
-            cameraPos_({0.0f, 0.0f}),
-            playerRadius_(0.2f),
-            lastTimeNs_(0),
             updateDebugInfoMethodId_(nullptr) {
         initRenderer();
     }
@@ -42,9 +39,9 @@ public:
     void handleInput();
 
     /*!
-     * Renders all the models in the renderer
+     * Renders the game state
      */
-    void render();
+    void render(const Game& game);
 
 private:
     /*!
@@ -60,8 +57,7 @@ private:
     void updateRenderArea();
 
     /*!
-     * Creates the models for this sample. You'd likely load a scene configuration from a file or
-     * use some other setup logic in your full game.
+     * Creates the models for this sample.
      */
     void createModels();
 
@@ -76,15 +72,6 @@ private:
 
     std::unique_ptr<Shader> shader_;
     std::vector<Model> models_;
-
-    Vector2 playerPos_;
-    Vector2 cameraPos_;
-    float playerRadius_;
-    uint64_t lastTimeNs_;
-
-    std::vector<Vector2> staticObjects_;
-    std::vector<Vector2> cloudObjects_;
-    std::vector<Vector2> treeObjects_;
 
     jmethodID updateDebugInfoMethodId_;
 };

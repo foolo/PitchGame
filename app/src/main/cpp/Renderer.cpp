@@ -76,7 +76,7 @@ Renderer::~Renderer() {
     }
 }
 
-void Renderer::render() {
+void Renderer::render(const Game& game) {
     updateRenderArea();
 
     if (shaderNeedsNewProjectionMatrix_) {
@@ -92,50 +92,15 @@ void Renderer::render() {
         shaderNeedsNewProjectionMatrix_ = false;
     }
 
-    // Calculate delta time
-    timespec now = {0, 0};
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t nowNs = (uint64_t)now.tv_sec * 1000000000ull + (uint64_t)now.tv_nsec;
-    if (lastTimeNs_ == 0) lastTimeNs_ = nowNs;
-    float dt = (float)(nowNs - lastTimeNs_) * 1e-9f;
-    lastTimeNs_ = nowNs;
-
-    // Move player to the right
-    float speedX = 2.0f;
-    playerPos_.x += speedX * dt;
-
-    // Camera follows player
-    cameraPos_.x = playerPos_.x;
-
-    bool hasTargetY = Audio_hasTargetY();
-    if (hasTargetY) {
-        // Interpolate towards target Y for smoother movement
-        float lerpFactor = 10.0f * dt;
-        if (lerpFactor > 1.0f) lerpFactor = 1.0f;
-        playerPos_.y = playerPos_.y + (Audio_getTargetY() - playerPos_.y) * lerpFactor;
-    }
-
-    // Bounce off walls (Y only now, X is infinite)
-    float maxY = kProjectionHalfHeight;
-
-    if (!hasTargetY) {
-        if (playerPos_.y + playerRadius_ > maxY) {
-            playerPos_.y = maxY - playerRadius_;
-        } else if (playerPos_.y - playerRadius_ < -maxY) {
-            playerPos_.y = -maxY + playerRadius_;
-        }
-    } else {
-        // Clamp Y to screen boundaries even in pitch-controlled mode
-        if (playerPos_.y + playerRadius_ > maxY) playerPos_.y = maxY - playerRadius_;
-        if (playerPos_.y - playerRadius_ < -maxY) playerPos_.y = -maxY + playerRadius_;
-    }
+    Vector2 playerPos = game.getPlayerPos();
+    Vector2 cameraPos = game.getCameraPos();
 
     // Update UI Debug Info via JNI
     if (updateDebugInfoMethodId_ != nullptr) {
         JNIEnv *env;
         app_->activity->vm->AttachCurrentThread(&env, nullptr);
         env->CallVoidMethod(app_->activity->javaGameActivity, updateDebugInfoMethodId_,
-                            playerPos_.x, playerPos_.y, Audio_getLastRms(), Audio_getLastPitch());
+                            playerPos.x, playerPos.y, Audio_getLastRms(), Audio_getLastPitch());
     }
 
     glClear(GL_COLOR_BUFFER_BIT);
@@ -148,31 +113,31 @@ void Renderer::render() {
         // 1. Farthest Layer: Clouds (Parallax factor 0.2)
         glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 0.5f); // White, semi-transparent
         glUniform1f(scaleLoc, 3.0f); // Big circles
-        for (const auto &objPos: cloudObjects_) {
-            shader_->setOffset(objPos.x - cameraPos_.x * 0.2f, objPos.y);
+        for (const auto &objPos: game.getCloudObjects()) {
+            shader_->setOffset(objPos.x - cameraPos.x * 0.2f, objPos.y);
             shader_->drawModel(models_[0]);
         }
 
         // 2. Mid Layer: Trees (Parallax factor 0.5)
         glUniform4f(colorLoc, 0.1f, 0.6f, 0.1f, 1.0f); // Green
         glUniform1f(scaleLoc, 1.5f);
-        for (const auto &objPos: treeObjects_) {
-            shader_->setOffset(objPos.x - cameraPos_.x * 0.5f, objPos.y - 0.5f);
+        for (const auto &objPos: game.getTreeObjects()) {
+            shader_->setOffset(objPos.x - cameraPos.x * 0.5f, objPos.y - 0.5f);
             shader_->drawModel(models_[0]);
         }
 
         // 3. Static objects (Parallax factor 1.0 - same as player)
         glUniform4f(colorLoc, 0.7f, 0.7f, 0.7f, 1.0f); // Grey
         glUniform1f(scaleLoc, 1.0f);
-        for (const auto &objPos: staticObjects_) {
-            shader_->setOffset(objPos.x - cameraPos_.x, objPos.y - cameraPos_.y);
+        for (const auto &objPos: game.getStaticObjects()) {
+            shader_->setOffset(objPos.x - cameraPos.x, objPos.y - cameraPos.y);
             shader_->drawModel(models_[0]);
         }
 
         // 4. Player
         glUniform4f(colorLoc, 1.0f, 1.0f, 0.0f, 1.0f); // Yellow
         glUniform1f(scaleLoc, 1.0f);
-        shader_->setOffset(playerPos_.x - cameraPos_.x, playerPos_.y - cameraPos_.y);
+        shader_->setOffset(playerPos.x - cameraPos.x, playerPos.y - cameraPos.y);
         shader_->drawModel(models_[0]);
     }
 
@@ -181,8 +146,6 @@ void Renderer::render() {
 }
 
 void Renderer::initRenderer() {
-    srand(time(nullptr));
-
     constexpr EGLint attribs[] = {
             EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
             EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -269,39 +232,19 @@ void Renderer::updateRenderArea() {
 }
 
 void Renderer::createModels() {
+    float playerRadius = 0.2f; // Should probably match Game's playerRadius_
     // Create a square that will be rendered as a circle by the fragment shader
     std::vector<Vertex> vertices = {
-            Vertex(Vector3{playerRadius_, playerRadius_, 0}, Vector2{1, 1}),
-            Vertex(Vector3{-playerRadius_, playerRadius_, 0}, Vector2{0, 1}),
-            Vertex(Vector3{-playerRadius_, -playerRadius_, 0}, Vector2{0, 0}),
-            Vertex(Vector3{playerRadius_, -playerRadius_, 0}, Vector2{1, 0})
+            Vertex(Vector3{playerRadius, playerRadius, 0}, Vector2{1, 1}),
+            Vertex(Vector3{-playerRadius, playerRadius, 0}, Vector2{0, 1}),
+            Vertex(Vector3{-playerRadius, -playerRadius, 0}, Vector2{0, 0}),
+            Vertex(Vector3{playerRadius, -playerRadius, 0}, Vector2{1, 0})
     };
     std::vector<Index> indices = {
             0, 1, 2, 0, 2, 3
     };
 
     models_.emplace_back(vertices, indices, nullptr);
-
-    // Initialize cloud objects (parallax layer 0.2)
-    for (int i = 0; i < 20; ++i) {
-        float rx = (float(rand()) / RAND_MAX) * 100.0f;
-        float ry = (float(rand()) / RAND_MAX) * 2.0f + 0.5f; // Mostly in the upper half
-        cloudObjects_.push_back({rx, ry});
-    }
-
-    // Initialize tree objects (parallax layer 0.5)
-    for (int i = 0; i < 40; ++i) {
-        float rx = (float(rand()) / RAND_MAX) * 150.0f;
-        float ry = (float(rand()) / RAND_MAX) * 0.5f - 1.5f; // Lower half
-        treeObjects_.push_back({rx, ry});
-    }
-
-    // Initialize static objects (same layer as player)
-    for (int i = 0; i < 100; ++i) {
-        float rx = (float(rand()) / RAND_MAX) * 200.0f;
-        float ry = (float(rand()) / RAND_MAX) * 4.0f - 2.0f;
-        staticObjects_.push_back({rx, ry});
-    }
 }
 
 void Renderer::handleInput() {

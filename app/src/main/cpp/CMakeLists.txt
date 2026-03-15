@@ -14,7 +14,8 @@ add_library(mygame1 SHARED
     Shader.cpp
     TextureAsset.cpp
     Utility.cpp
-    Audio.cpp)
+    Audio.cpp
+    Game.cpp)
 
 # Searches for a package provided by the game activity dependency
 find_package(game-activity REQUIRED CONFIG)
